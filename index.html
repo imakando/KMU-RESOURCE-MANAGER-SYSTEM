@@ -8,11 +8,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin & Supervisor System (Firebase Enabled)</title>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase (compat) SDKs for easier migration -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
     <style>
+        /* Light mode support */
+        .light-mode body, .light-mode {
+            background: #f7f7f7;
+            color: #111;
+        }
+        .light-mode .system-panel {
+            background: #ffffff;
+            border-color: #222;
+        }
+        .light-mode .btn-primary { background: #0077ff; color: #fff; border-color:#005bbb; }
+        .light-mode .btn-success { background: #28a745; color:#fff; }
+        .light-mode .btn-warning { background: #ffc107; color:#000; }
+        .light-mode .btn-danger  { background: #dc3545; color:#fff; }
+        .light-mode input, .light-mode select, .light-mode textarea {
+            background:#fff; color:#000; border-color:#333;
+        }
+        .light-mode .text-neon-blue, .light-mode .text-neon-green, .light-mode .text-neon-yellow, .light-mode .text-neon-red {
+            color: #111 !important;
+        }
+        .light-mode .station-card.occupied {
+            border-color:#ff3333; background-color:#ffe5e5;
+        }
+        .light-mode .station-card.unoccupied {
+            border-color:#00cc00; background-color:#e6ffe6;
+        }
+        .light-mode .station-card.needs-maintenance {
+            border-color:#cccc00; background-color:#ffffe6;
+        }
+
         @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
         body {
             font-family: 'Roboto Mono', monospace;
@@ -200,49 +230,6 @@
             padding: 1rem;
             text-align: center;
         }
-        /* New Styles for Supervisor Buttons */
-        .supervisor-actions {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            margin-top: 0.5rem;
-        }
-        .nav-bar {
-            background-color: #0d0d0d;
-            border-bottom: 2px solid #00ff00;
-            padding: 1rem;
-            display: flex;
-            justify-content: flex-start;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .nav-link {
-            text-decoration: none;
-            color: #00aaff;
-            font-weight: bold;
-            padding: 0.5rem 1rem;
-            border: 1px solid transparent;
-            transition: all 0.3s ease;
-        }
-        .nav-link:hover {
-            border-color: #00aaff;
-            color: #00ffff;
-        }
-        .top-button-container {
-            text-align: right;
-            margin-top: 1rem;
-        }
-        .dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .dashboard-header h1 {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #00ff00;
-        }
     </style>
 </head>
 <body>
@@ -258,7 +245,7 @@
             <div class="flex flex-col items-center mb-6">
                  <div class="p-4 rounded-full mb-2 border-2 border-dashed border-neon-green">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00ff00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-square"><path d="m7 11 2 2 4-4"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-                 </div>
+                </div>
             </div>
             <div class="flex justify-center mb-8">
                 <button id="show-admin-login-btn" class="btn-primary w-1/3">ADMIN</button>
@@ -283,40 +270,30 @@
             </form>
         </div>
         <div id="admin-dashboard" style="display:none;">
-            <div class="nav-bar">
-                <a href="#admin-user-management-section" class="nav-link">USER MANAGEMENT</a>
-                <a href="#admin-register-section" class="nav-link">REGISTRATION</a>
-                <a href="#admin-reports-section" class="nav-link">REPORTS</a>
-                <a href="#admin-station-status-section" class="nav-link">STATION STATUS</a>
-                <a href="#admin-broadcast-section" class="nav-link">BROADCAST</a>
-                <a href="#admin-chat-section" class="nav-link">CHAT</a>
-            </div>
-            <div class="system-panel">
-                <div class="dashboard-header">
-                    <h1 class="text-neon-blue">ADMIN DASHBOARD</h1>
+            
+<div class="flex-container mt-2" id="admin-quick-nav">
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="scrollToSection('admin-register-student')">Register Student</button>
+        <button class="btn-primary" onclick="scrollToSection('admin-register-supervisor')">Register Supervisor</button>
+        <button class="btn-primary" onclick="scrollToSection('admin-user-management')">User Management</button>
+        <button class="btn-primary" onclick="scrollToSection('admin-activities')">Activities & Reports</button>
+        <button class="btn-primary" onclick="scrollToSection('admin-station-status')">Station Status</button>
+        <button class="btn-primary" onclick="scrollToSection('admin-chat')">Chat</button>
+        <button class="btn-warning" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+    <div id="supervisor-on-duty" style="margin-left:auto; font-size:0.9rem;">
+        <span class="text-neon-yellow">SUPERVISOR ON DUTY:</span>
+        <span id="supervisor-on-duty-details" class="text-neon-green">None</span>
+    </div>
+</div>
+<div class="system-panel">
+                <div class="flex-container">
+                    <h1 class="text-neon-blue text-3xl font-bold">ADMIN DASHBOARD</h1>
                     <button id="admin-logout-btn" class="btn-danger">LOGOUT</button>
                 </div>
-                <div id="on-duty-section" class="flex-container mt-4">
+                <div class="flex-container mt-4">
                     <div class="system-panel">
-                        <h3 class="text-neon-blue text-xl font-bold">SUPERVISOR ON DUTY</h3>
-                        <div id="on-duty-supervisor" class="text-neon-green">
-                            <p>None</p>
-                        </div>
-                    </div>
-                    <div class="system-panel">
-                        <h3 class="text-neon-blue text-xl font-bold">LAST ASSIGNMENT</h3>
-                        <div id="last-assignment" class="text-neon-green">
-                            <p>None</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="admin-register-section" class="flex-container mt-4">
-                    <div class="system-panel">
-                        <h2 class="text-neon-blue text-2xl font-bold mb-4">REGISTER STUDENT</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                        <h2 id="admin-register-student" class="text-neon-blue text-2xl font-bold mb-4">REGISTER STUDENT</h2>
                         <form id="student-register-form">
                             <input type="text" id="student-name" placeholder="Student Name" required>
                             <input type="text" id="student-id" placeholder="Student ID" required>
@@ -330,10 +307,7 @@
                         </form>
                     </div>
                     <div class="system-panel">
-                        <h2 class="text-neon-blue text-2xl font-bold mb-4">REGISTER SUPERVISOR</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                        <h2 id="admin-register-supervisor" class="text-neon-blue text-2xl font-bold mb-4">REGISTER SUPERVISOR</h2>
                         <form id="supervisor-register-form">
                             <input type="text" id="supervisor-name" placeholder="Supervisor Name" required>
                             <input type="text" id="supervisor-reg-id" placeholder="ID" required>
@@ -347,23 +321,13 @@
                         </form>
                     </div>
                 </div>
-                <div id="admin-user-management-section" class="system-panel mt-4">
-                    <div class="dashboard-header">
-                        <h2 class="text-neon-blue text-2xl font-bold">USER MANAGEMENT</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
-                    </div>
-<!-- SEARCH REMOVED BY REQUEST -->
-<div id="user-list"></div>
+                <div class="system-panel mt-4">
+                    <h2 id="admin-user-management" class="text-neon-blue text-2xl font-bold mb-4">USER MANAGEMENT</h2>
+                    <!-- Search removed by request --><input type="hidden" id="user-search-input" value="">
+                    <div id="user-list"></div>
                 </div>
-                <div id="admin-reports-section" class="system-panel mt-4">
-                    <div class="dashboard-header">
-                        <h2 class="text-neon-blue text-2xl font-bold">SYSTEM ACTIVITIES & REPORTS</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
-                    </div>
+                <div class="system-panel mt-4">
+                    <h2 id="admin-activities" class="text-neon-blue text-2xl font-bold mb-4">SYSTEM ACTIVITIES & REPORTS</h2>
                     <div class="flex-container">
                         <div class="system-panel">
                             <h3 class="text-xl text-neon-green">ACTIVITY LOG</h3>
@@ -382,9 +346,6 @@
                 </div>
                 <div class="system-panel mt-4">
                     <h2 class="text-neon-blue text-2xl font-bold mb-4">CUSTOM REPORTS</h2>
-                    <div class="top-button-container">
-                        <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                    </div>
                     <form id="custom-report-form">
                         <label for="report-start-date" class="text-neon-green">Start Date:</label>
                         <input type="date" id="report-start-date">
@@ -400,32 +361,21 @@
                     </form>
                     <div id="custom-report-output" class="report-section" style="display: none;"></div>
                 </div>
-                <div id="admin-station-status-section" class="system-panel mt-4">
-                    <h2 class="text-neon-blue text-2xl font-bold mb-4">STATION STATUS</h2>
-                    <div class="top-button-container">
-                        <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                    </div>
+                <div class="system-panel mt-4">
+                    <h2 id="admin-station-status" class="text-neon-blue text-2xl font-bold mb-4">STATION STATUS</h2>
                     <div id="station-status-admin" class="grid-container"></div>
                 </div>
-                <div id="admin-broadcast-section" class="system-panel mt-4">
+                <div class="system-panel mt-4">
                     <h2 class="text-neon-blue text-2xl font-bold mb-4">EMERGENCY BROADCAST</h2>
-                    <div class="top-button-container">
-                        <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                    </div>
                     <form id="broadcast-form">
                         <textarea id="broadcast-message-input" placeholder="Type urgent message here..." rows="2" required></textarea>
                         <button type="submit" class="btn-danger w-full mt-2">SEND BROADCAST</button>
                     </form>
                 </div>
-                <div id="admin-chat-section" class="system-panel mt-4">
-                    <div class="dashboard-header">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <h2 class="text-neon-blue text-2xl font-bold">CHAT WITH SUPERVISORS</h2>
-                            <span id="admin-chat-notification" class="blinking-dot" style="display:none;"></span>
-                        </div>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                <div class="system-panel mt-4">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h2 class="text-neon-blue text-2xl font-bold">CHAT WITH SUPERVISORS</h2>
+                        <span id="admin-chat-notification" class="blinking-dot" style="display:none;"></span>
                     </div>
                     <div id="admin-chat-box" class="chat-container"></div>
                     <form id="admin-chat-form" style="display:flex; gap: 1rem; margin-top: 1rem;">
@@ -436,31 +386,32 @@
             </div>
         </div>
         <div id="supervisor-dashboard" style="display:none;">
-            <div class="nav-bar">
-                <a href="#supervisor-assign-section" class="nav-link">ASSIGN STATION</a>
-                <a href="#supervisor-station-status-section" class="nav-link">STATION STATUS</a>
-                <a href="#supervisor-reports-section" class="nav-link">REPORT ISSUE</a>
-                <a href="#supervisor-chat-section" class="nav-link">CHAT WITH ADMIN</a>
-            </div>
-            <div class="system-panel">
-                <div class="dashboard-header">
+            
+<div class="flex-container mt-2" id="supervisor-quick-nav">
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="scrollToSection('sup-assign')">Assign Station</button>
+        <button class="btn-primary" onclick="scrollToSection('sup-status')">Station Status</button>
+        <button class="btn-primary" onclick="scrollToSection('sup-report')">Report Issue</button>
+        <button class="btn-primary" onclick="scrollToSection('sup-chat')">Chat</button>
+        <button class="btn-warning" onclick="toggleTheme()">Toggle Theme</button>
+    </div>
+</div>
+<div class="system-panel">
+                <div class="flex-container">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div id="supervisor-profile-photo" style="width: 48px; height: 48px; border-radius: 50%; border: 1px dashed #00ff00; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #333;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00ff00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
-                        <h1 class="text-neon-green" id="supervisor-dashboard-title">SUPERVISOR DASHBOARD</h1>
+                        <h1 class="text-neon-green text-3xl font-bold">SUPERVISOR DASHBOARD</h1>
                     </div>
                     <div style="display:flex; gap: 1rem;">
                         <button id="supervisor-change-password-btn" class="btn-primary">CHANGE PASSWORD</button>
                         <button id="supervisor-logout-btn" class="btn-danger">LOGOUT</button>
                     </div>
                 </div>
-                <div id="supervisor-assign-section" class="flex-container mt-4">
+                <div class="flex-container mt-4">
                     <div class="system-panel">
-                        <h2 class="text-neon-green text-2xl font-bold mb-4">ASSIGN STATION</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                        <h2 id="sup-assign" class="text-neon-green text-2xl font-bold mb-4">ASSIGN STATION</h2>
                         <form id="station-assignment-form">
                             <select id="station-select" required>
                                 <option value="">SELECT A STATION</option>
@@ -476,20 +427,14 @@
                             <button type="submit" class="btn-success w-full mt-4">ASSIGN STATION</button>
                         </form>
                     </div>
-                    <div id="supervisor-station-status-section" class="system-panel">
-                        <h2 class="text-neon-green text-2xl font-bold mb-4">STATION STATUS</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                    <div class="system-panel">
+                        <h2 id="sup-status" class="text-neon-green text-2xl font-bold mb-4">STATION STATUS</h2>
                         <div id="station-status-supervisor" class="grid-container"></div>
                     </div>
                 </div>
-                <div id="supervisor-reports-section" class="flex-container mt-4">
+                <div class="flex-container mt-4">
                     <div class="system-panel">
-                        <h2 class="text-neon-green text-2xl font-bold mb-4">REPORT STATION ISSUES</h2>
-                        <div class="top-button-container">
-                            <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                        </div>
+                        <h2 id="sup-report" class="text-neon-green text-2xl font-bold mb-4">REPORT STATION ISSUES</h2>
                         <form id="issue-report-form">
                             <select id="issue-station-select" required>
                                 <option value="">SELECT STATION</option>
@@ -503,15 +448,10 @@
                             <button type="submit" class="btn-warning w-full mt-4">REPORT ISSUE</button>
                         </form>
                     </div>
-                    <div id="supervisor-chat-section" class="system-panel">
-                        <div class="dashboard-header">
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <h2 class="text-neon-green text-2xl font-bold">CHAT WITH ADMIN</h2>
-                                <span id="supervisor-chat-notification" class="blinking-dot" style="display:none;"></span>
-                            </div>
-                            <div class="top-button-container">
-                                <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                            </div>
+                    <div class="system-panel">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <h2 id="sup-chat" class="text-neon-green text-2xl font-bold mb-4">CHAT WITH ADMIN</h2>
+                            <span id="supervisor-chat-notification" class="blinking-dot" style="display:none;"></span>
                         </div>
                         <div id="supervisor-chat-box" class="chat-container"></div>
                         <form id="supervisor-chat-form" style="display:flex; gap: 1rem; margin-top: 1rem;">
@@ -524,15 +464,12 @@
         </div>
         <div id="kiosk-screen" style="display:none;">
             <div class="system-panel">
-                <div class="dashboard-header">
+                <div class="flex-container">
                     <h1 class="text-neon-yellow text-3xl font-bold">STUDENT KIOSK</h1>
                     <button id="kiosk-back-btn" class="btn-warning">BACK TO LOGIN</button>
                 </div>
                 <div class="system-panel mt-4">
                     <h2 class="text-neon-yellow text-2xl font-bold mb-4">STATION STATUS OVERVIEW</h2>
-                    <div class="top-button-container">
-                        <button onclick="scrollToTop()" class="btn-primary">BACK TO TOP</button>
-                    </div>
                     <div id="kiosk-station-list" class="grid-container"></div>
                 </div>
             </div>
@@ -571,7 +508,7 @@
     </div>
 
     <script>
-         // ---------- Firebase Configuration ----------
+        // ---------- Firebase Configuration ----------
         const firebaseConfig = {
           apiKey: "AIzaSyDrjo_HDQ1RRkjA-zXgZtuFovI7zg2yma0",
           authDomain: "kmu-digita-rsc-mnt-system.firebaseapp.com",
@@ -586,6 +523,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
+
         // ---------- Local state (minimal) ----------
         let currentUser = null; // { uid, role, name, id }
         let adminSettings = null; // loaded from meta/adminSettings doc
@@ -638,7 +576,6 @@
         const newPasswordInput = document.getElementById('new-password');
         const newPasswordStrength = document.getElementById('new-password-strength');
         const supervisorProfilePhoto = document.getElementById('supervisor-profile-photo');
-        const supervisorDashboardTitle = document.getElementById('supervisor-dashboard-title');
         const welcomeMessage = document.getElementById('welcome-message');
         const broadcastMessageEl = document.getElementById('broadcast-message');
         const broadcastTextEl = document.getElementById('broadcast-text');
@@ -653,9 +590,6 @@
         const supervisorChatNotification = document.getElementById('supervisor-chat-notification');
 
         // ---------- Utility functions ----------
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
         function updateWelcomeMessage() {
             const now = new Date();
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
@@ -671,18 +605,6 @@
                 // kiosk list updates from realtime listener
             }
         }
-        
-        // Navigation for dashboards
-        document.querySelectorAll('.nav-bar a').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const targetId = e.target.getAttribute('href').substring(1);
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
-                    targetElement.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
 
         // ---------- Initial seeding & listeners ----------
         async function ensureAdminSettings() {
@@ -691,7 +613,7 @@
             if (!doc.exists) {
                 // create default admin settings. You should update secret code & admin email via Firestore console
                 await docRef.set({
-                    email: 'admin@kmu.edu',
+                    email: 'admin@kmu.com',
                     username: 'Admin',
                     secretCode: '12345'
                 });
@@ -805,7 +727,7 @@
                 adminBtn.style.backgroundColor = '#00cc00';
             }
         }
-        
+
         adminLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             adminLoginMessage.textContent = '';
@@ -863,15 +785,40 @@
                     supervisorLoginMessage.textContent = 'SUPERVISOR AUTH ACCOUNT NOT FOUND. CONTACT ADMIN.';
                     return;
                 }
+                
+                // lockout check
+                const now = Date.now();
+                const lockUntil = sup.lockUntil ? sup.lockUntil.toMillis ? sup.lockUntil.toMillis() : sup.lockUntil : null;
+                if (lockUntil && lockUntil > now) {
+                    const mins = Math.ceil((lockUntil - now) / 60000);
+                    supervisorLoginMessage.textContent = `ACCOUNT LOCKED. TRY AGAIN IN ${mins} MINUTE(S).`;
+                    return;
+                }
                 // attempt sign in using their auth email stored
                 await auth.signInWithEmailAndPassword(sup.email, password);
-                currentUser = { role: 'supervisor', uid: auth.currentUser.uid, id: id, name: sup.name };
-                supervisorDashboardTitle.textContent = `SUPERVISOR ON DUTY: ${sup.name}`;
+                // success: reset attempts
+                await db.collection('supervisors').doc(id).update({ failedAttempts: 0, lockUntil: null });
+                currentUser = { role: 'supervisor', uid: auth.currentUser.uid, id: id, name: sup.name, email: sup.email };
+                await db.collection('meta').doc('supervisorOnDuty').set({ id, name: sup.name, email: sup.email, time: new Date() });
                 showScreen('supervisor-dashboard');
                 attachRealtimeListeners();
                 logActivity(`Supervisor ${sup.name} logged in.`);
+
             } catch (err) {
                 console.error(err);
+                try {
+                    const supRef = db.collection('supervisors').doc(e.target['supervisor-id'].value.trim());
+                    const docx = await supRef.get();
+                    if (docx.exists) {
+                        const d = docx.data();
+                        const attempts = (d.failedAttempts || 0) + 1;
+                        let updates = { failedAttempts: attempts };
+                        if (attempts >= 3) {
+                            updates.lockUntil = new Date(Date.now() + 15*60000);
+                        }
+                        await supRef.update(updates);
+                    }
+                } catch (_e) {}
                 supervisorLoginMessage.textContent = err.message || 'LOGIN FAILED.';
             }
         });
@@ -884,9 +831,9 @@
             logActivity('Admin logged out.');
         });
         document.getElementById('supervisor-logout-btn').addEventListener('click', async () => {
+            try { await db.collection('meta').doc('supervisorOnDuty').set({}); } catch(e){}
             await auth.signOut();
             logActivity(`Supervisor logged out.`);
-            db.collection('meta').doc('onDutySupervisor').set({});
             currentUser = null;
             showScreen('login-screen');
         });
@@ -916,13 +863,7 @@
                     photoUrl = await storageRef.getDownloadURL();
                 }
                 await studentRef.set({
-                    name,
-                    id,
-                    hostel,
-                    program,
-                    year: Number(year),
-                    photo: photoUrl || null,
-                    stationHistory: []
+                    name, id, hostel, program, year: Number(year), photo: photoUrl || null, stationHistory: []
                 });
                 studentRegisterForm.reset();
                 studentRegisterMessage.textContent = `STUDENT ${name} REGISTERED SUCCESSFULLY!`;
@@ -962,12 +903,7 @@
                     photoUrl = await storageRef.getDownloadURL();
                 }
                 await supRef.set({
-                    name,
-                    id: regId,
-                    email,
-                    photo: photoUrl || null,
-                    isBlocked: false,
-                    authUid
+                    name, id: regId, email, photo: photoUrl || null, isBlocked: false, authUid
                 });
                 supervisorRegisterForm.reset();
                 supervisorPasswordStrength.textContent = '';
@@ -984,820 +920,627 @@
         // ---------- Render user list (students + supervisors) ----------
         userSearchInput.addEventListener('input', () => renderUserList());
         function renderUserList() {
-            const query = '';
             userList.innerHTML = '';
-            const allUsers = [
-                ...studentsCache.map(u => ({...u, role: 'student'})), 
-                ...supervisorsCache.map(u => ({...u, role: 'supervisor'}))
-            ].sort((a,b) => a.name.localeCompare(b.name)); // Sort by name
-
-            const filteredUsers = allUsers.filter(u =>
-                u.name.toLowerCase().includes(query) || u.id.toLowerCase().includes(query)
-            );
-            
-            if (filteredUsers.length === 0) {
-                userList.innerHTML = '<p class="text-center text-neon-red">NO USERS FOUND.</p>';
-                return;
-            }
-
+            const searchTerm = (userSearchInput.value || '').toLowerCase();
+            const allUsers = [...studentsCache, ...supervisorsCache];
+            const filteredUsers = allUsers.filter(user => (user.name || '').toLowerCase().includes(searchTerm) || (user.id || '').toLowerCase().includes(searchTerm));
             filteredUsers.forEach(user => {
-                const userCard = document.createElement('div');
-                userCard.className = 'system-panel mt-2';
-                userCard.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img src="${user.photo || 'https://via.placeholder.com/64?text=NO+PHOTO'}" alt="User Photo" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 1px dashed #00ff00;">
+                const userItem = document.createElement('div');
+                userItem.className = 'system-panel flex-container';
+                const photoHtml = user.photo ? `<img src="${user.photo}" alt="${user.name}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1px dashed #00ff00;">` : `<div style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: #333; border-radius: 50%;">N/A</div>`;
+                const userType = user.hasOwnProperty('program') ? 'Student' : 'Supervisor';
+                const statusHtml = user.isBlocked ? `<p class="text-xs text-neon-red">BLOCKED</p>` : `<p class="text-xs text-neon-green">ACTIVE</p>`;
+                userItem.innerHTML = `
+                    <div style="display:flex; gap: 1rem; align-items: center;">
+                        ${photoHtml}
                         <div>
-                            <p class="text-xl text-neon-green">${user.name} <span class="text-sm text-neon-blue">(${user.role.toUpperCase()})</span></p>
-                            <p>ID: ${user.id}</p>
-                            ${user.role === 'supervisor' && user.isBlocked ? '<p class="text-neon-red">BLOCKED</p>' : ''}
+                            <p class="text-xl">${user.name} (${user.id})</p>
+                            <p class="text-sm">${userType}: ${user.email || user.program}</p>
+                            ${userType === 'Supervisor' ? statusHtml : ''}
                         </div>
                     </div>
-                    <div style="display:flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-                        <button class="btn-primary" onclick="showUserModal('${user.id}', '${user.role}')">VIEW/EDIT</button>
-                        ${user.role === 'supervisor' ? `
-                            ${user.isBlocked ? `<button class="btn-success" onclick="toggleSupervisorBlock('${user.id}', false)">UNBLOCK</button>` : `<button class="btn-warning" onclick="toggleSupervisorBlock('${user.id}', true)">BLOCK</button>`}
+                    <div style="display: flex; gap: 0.5rem;">
+                        ${userType === 'Supervisor' ? `
+                            <button onclick="toggleSupervisorBlock('${user.id}')" class="btn-warning" style="background-color: ${user.isBlocked ? '#00cc00' : '#ffff33'}; border-color: ${user.isBlocked ? '#00cc00' : '#ffff33'}; color: #000;">
+                                ${user.isBlocked ? 'UNBLOCK' : 'BLOCK'}
+                            </button>
                         ` : ''}
-                        <button class="btn-danger" onclick="deleteUser('${user.id}', '${user.role}')">DELETE</button>
+                        <button onclick="showUserDetail('${user.id}', '${userType.toLowerCase()}')" class="btn-primary" style="background-color: #00aaff; border-color: #00aaff; color: #000;">VIEW / EDIT</button>
+                        <button onclick="deleteUser('${user.id}', '${userType.toLowerCase()}')" class="btn-danger" style="background-color: #ff3333; border-color: #ff3333; color: #000;">DELETE</button>
                     </div>
                 `;
-                userList.appendChild(userCard);
+                userList.appendChild(userItem);
             });
         }
-        
-        async function showUserModal(id, role) {
-            userModalContent.innerHTML = '<p>LOADING...</p>';
-            userModalTitle.textContent = 'USER DETAILS';
-            document.getElementById('edit-user-form').dataset.userId = id;
-            document.getElementById('edit-user-form').dataset.userRole = role;
-            
-            const user = role === 'student' ? studentsCache.find(s => s.id === id) : supervisorsCache.find(s => s.id === id);
 
-            if (!user) {
-                userModalContent.innerHTML = '<p class="text-neon-red">USER NOT FOUND.</p>';
-                openModal('user-detail-modal');
-                return;
-            }
-
-            let content = '';
-            if (role === 'student') {
-                content = `
-                    <p class="text-neon-green">Name:</p><input type="text" name="name" value="${user.name}" required>
-                    <p class="text-neon-green">Student ID:</p><input type="text" name="id" value="${user.id}" readonly>
-                    <p class="text-neon-green">Hostel.Room:</p><input type="text" name="hostel" value="${user.hostel}" required>
-                    <p class="text-neon-green">Program:</p><input type="text" name="program" value="${user.program}" required>
-                    <p class="text-neon-green">Year:</p><input type="number" name="year" value="${user.year}" required>
-                `;
+        window.showUserDetail = async (id, type) => {
+            let user;
+            if (type === 'student') {
+                const doc = await db.collection('students').doc(id).get();
+                if (!doc.exists) return;
+                user = { id: doc.id, ...doc.data() };
             } else {
-                content = `
-                    <p class="text-neon-green">Name:</p><input type="text" name="name" value="${user.name}" required>
-                    <p class="text-neon-green">ID:</p><input type="text" name="id" value="${user.id}" readonly>
-                    <p class="text-neon-green">Email:</p><input type="email" name="email" value="${user.email}" required>
-                    <p class="text-neon-green">Is Blocked:</p>
-                    <select name="isBlocked">
-                        <option value="false" ${!user.isBlocked ? 'selected' : ''}>No</option>
-                        <option value="true" ${user.isBlocked ? 'selected' : ''}>Yes</option>
-                    </select>
-                `;
+                const doc = await db.collection('supervisors').doc(id).get();
+                if (!doc.exists) return;
+                user = { id: doc.id, ...doc.data() };
             }
-            
-            userModalContent.innerHTML = content;
-            openModal('user-detail-modal');
-        }
+            userModalTitle.textContent = `${type.toUpperCase()} PROFILE: ${user.name}`;
+            let contentHtml = `<input type="hidden" id="edit-user-id" value="${user.id}">`;
+            contentHtml += `<input type="hidden" id="edit-user-type" value="${type}">`;
+            contentHtml += `<label class="text-neon-green">Name:</label><input type="text" id="edit-name" value="${user.name}" required>`;
+            contentHtml += `<label class="text-neon-green">ID:</label><input type="text" value="${user.id}" disabled>`;
+            if (type === 'student') {
+                contentHtml += `<label class="text-neon-green">Hostel:</label><input type="text" id="edit-hostel" value="${user.hostel || ''}" required>`;
+                contentHtml += `<label class="text-neon-green">Program:</label><input type="text" id="edit-program" value="${user.program || ''}" required>`;
+                contentHtml += `<label class="text-neon-green">Year:</label><input type="number" id="edit-year" value="${user.year || ''}" required>`;
+                contentHtml += `<h4 class="text-xl text-neon-yellow mt-4">STATION USAGE HISTORY:</h4><ul style="height: 150px; overflow-y: auto; border: 1px dashed #ffff33; padding: 1rem;">`;
+                if (user.stationHistory && user.stationHistory.length > 0) {
+                    user.stationHistory.forEach(hist => {
+                        contentHtml += `<li>STATION ${hist.stationId} | ASSIGNED: ${new Date(hist.startTime).toLocaleString()}</li>`;
+                    });
+                } else {
+                    contentHtml += `<li>NO USAGE HISTORY FOUND.</li>`;
+                }
+                contentHtml += `</ul>`;
+            } else {
+                contentHtml += `<label class="text-neon-green">Email:</label><input type="email" id="edit-email" value="${user.email || ''}" required>`;
+                contentHtml += `<h4 class="text-xl text-neon-yellow mt-4">ASSIGNED STUDENTS:</h4><ul style="height: 150px; overflow-y: auto; border: 1px dashed #ffff33; padding: 1rem;">`;
+                // assigned students will be queried
+                const assignedSnapshot = await db.collection('stations').where('assignedBy', '==', user.name).where('isOccupied', '==', true).get();
+                if (!assignedSnapshot.empty) {
+                    assignedSnapshot.forEach(st => {
+                        const stData = st.data();
+                        contentHtml += `<li>STATION ${stData.id}: ${stData.assignedTo ? stData.assignedTo.name : 'N/A'}</li>`;
+                    });
+                } else {
+                    contentHtml += `<li>NO STUDENTS CURRENTLY ASSIGNED.</li>`;
+                }
+                contentHtml += `</ul>`;
+            }
+            userModalContent.innerHTML = contentHtml;
+            userDetailModal.style.display = 'block';
+        };
 
-        async function saveUserChanges(e) {
+        document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const form = e.target;
-            const userId = form.dataset.userId;
-            const userRole = form.dataset.userRole;
-            const updates = {};
-            for (let i = 0; i < form.elements.length; i++) {
-                const el = form.elements[i];
-                if (el.name && el.name !== 'id') {
-                    if (el.type === 'number') {
-                        updates[el.name] = Number(el.value);
-                    } else if (el.name === 'isBlocked') {
-                        updates[el.name] = el.value === 'true';
-                    } else {
-                        updates[el.name] = el.value;
-                    }
-                }
+            const id = e.target['edit-user-id'].value;
+            const type = e.target['edit-user-type'].value;
+            if (type === 'student') {
+                const studentRef = db.collection('students').doc(id);
+                await studentRef.update({
+                    name: e.target['edit-name'].value,
+                    hostel: document.getElementById('edit-hostel').value,
+                    program: document.getElementById('edit-program').value,
+                    year: Number(document.getElementById('edit-year').value)
+                });
+                logActivity(`ADMIN UPDATED STUDENT ${id}'s details.`);
+            } else {
+                const supRef = db.collection('supervisors').doc(id);
+                await supRef.update({
+                    name: e.target['edit-name'].value,
+                    email: document.getElementById('edit-email').value
+                });
+                logActivity(`ADMIN UPDATED SUPERVISOR ${id}'s details.`);
             }
-            try {
-                await db.collection(`${userRole}s`).doc(userId).update(updates);
-                logActivity(`ADMIN UPDATED ${userRole.toUpperCase()} DETAILS FOR ${userId}.`);
-                closeModal('user-detail-modal');
-            } catch (error) {
-                console.error("Error updating user: ", error);
-                alert('FAILED TO UPDATE USER. ' + error.message);
-            }
-        }
-        document.getElementById('edit-user-form').addEventListener('submit', saveUserChanges);
-
-        async async function toggleSupervisorBlock(id, isBlocked) {
-            if (confirm(`ARE YOU SURE YOU WANT TO ${isBlocked ? 'BLOCK' : 'UNBLOCK'} SUPERVISOR ${id}?`)) {
-                try {
-                    await db.collection('supervisors').doc(id).update({ isBlocked });
-                    logActivity(`ADMIN ${isBlocked ? 'BLOCKED' : 'UNBLOCKED'} SUPERVISOR (ID: ${id}).`);
-                } catch (error) {
-                    console.error("Error toggling block status: ", error);
-                    alert('FAILED TO UPDATE SUPERVISOR STATUS.');
-                }
-            }
-        }
-        async function deleteUser(id, role) {
-            if (confirm(`ARE YOU SURE YOU WANT TO DELETE THIS ${role.toUpperCase()} (ID: ${id})? THIS ACTION CANNOT BE UNDONE.`)) {
-                try {
-                    // Check if student is assigned to a station
-                    if (role === 'student') {
-                         const stations = window._stationsCache.filter(s => s.assignedTo === id);
-                         if (stations.length > 0) {
-                             alert(`Cannot delete student ${id}. They are currently assigned to station(s) ${stations.map(s => s.id).join(', ')}. Please unassign them first.`);
-                             return;
-                         }
-                    }
-
-                    // For supervisor, delete auth user first
-                    if (role === 'supervisor') {
-                        const supDoc = await db.collection('supervisors').doc(id).get();
-                        const supData = supDoc.data();
-                        // This is a complex operation that requires a server-side function, but we can log the intent.
-                        // In a real system, you would call a Firebase Cloud Function to delete the user from Auth.
-                        logActivity(`ADMIN DELETED SUPERVISOR AUTH ACCOUNT. (Requires Cloud Function).`);
-                    }
-                    
-                    await db.collection(`${role}s`).doc(id).delete();
-                    // Also delete photo from storage
-                    const photoRef = storage.ref().child(`photos/${role}s/${id}`);
-                    try {
-                        await photoRef.delete();
-                    } catch (e) {
-                        console.log("No photo to delete for user, or it doesn't exist.");
-                    }
-
-                    logActivity(`ADMIN DELETED ${role.toUpperCase()} (ID: ${id}).`);
-                } catch (error) {
-                    console.error("Error deleting user: ", error);
-                    alert('FAILED TO DELETE USER. ' + error.message);
-                }
-            }
-        }
-        function openModal(modalId) {
-            document.getElementById(modalId).style.display = 'block';
-        }
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-        
-        // ---------- Report Generation ----------
-        function updateReportCounts() {
-            const occupied = window._stationsCache.filter(s => s.isOccupied).length;
-            const unoccupied = window._stationsCache.filter(s => !s.isOccupied && !s.statusFlag).length;
-            const students = studentsCache.length;
-            const supervisors = supervisorsCache.length;
-            document.getElementById('report-supervisors').textContent = supervisors;
-            document.getElementById('report-students').textContent = students;
-            document.getElementById('report-total-stations').textContent = window._stationsCache.length;
-            document.getElementById('report-occupied-stations').textContent = occupied;
-            document.getElementById('report-unoccupied-stations').textContent = unoccupied;
-        }
-
-        async function generateReport() {
-            const reportData = {
-                timestamp: new Date().toISOString(),
-                totalSupervisors: supervisorsCache.length,
-                totalStudents: studentsCache.length,
-                totalStations: window._stationsCache.length,
-                occupiedStations: window._stationsCache.filter(s => s.isOccupied).length,
-                unoccupiedStations: window._stationsCache.filter(s => !s.isOccupied).length,
-                stationsNeedingMaintenance: window._stationsCache.filter(s => s.statusFlag === 'Needs Maintenance').length,
-                // Add more data as needed
-            };
-            const reportString = JSON.stringify(reportData, null, 2);
-            alert('REPORT GENERATED:\n' + reportString);
-            logActivity('Admin generated a system report.');
-        }
-
-        customReportForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const start = e.target['report-start-date'].value;
-            const end = e.target['report-end-date'].value;
-            const metrics = Array.from(e.target.querySelectorAll('input[name="metric"]:checked')).map(el => el.value);
-
-            if (!start || !end || metrics.length === 0) {
-                alert('Please select a date range and at least one metric.');
-                return;
-            }
-
-            const startDate = new Date(start).getTime();
-            const endDate = new Date(end).getTime() + 86400000; // end of the day
-
-            const allLogsSnapshot = await db.collection('activities')
-                .where('time', '>=', startDate)
-                .where('time', '<=', endDate)
-                .get();
-
-            const allLogs = allLogsSnapshot.docs.map(doc => doc.data());
-
-            let reportText = `CUSTOM REPORT FROM ${start} TO ${end}\n\n`;
-            reportText += `Number of activities logged: ${allLogs.length}\n\n`;
-
-            if (metrics.includes('mostUsed') || metrics.includes('leastUsed')) {
-                const stationUsage = {};
-                allLogs.filter(l => l.message.includes('ASSIGNED'))
-                    .forEach(log => {
-                        const stationId = log.message.match(/station (\d+)/i);
-                        if (stationId) {
-                            const id = stationId[1];
-                            stationUsage[id] = (stationUsage[id] || 0) + 1;
-                        }
-                    });
-
-                const sortedStations = Object.entries(stationUsage).sort(([, a], [, b]) => b - a);
-
-                if (metrics.includes('mostUsed')) {
-                    reportText += '--- MOST USED STATIONS ---\n';
-                    sortedStations.slice(0, 5).forEach(([id, count]) => {
-                        reportText += `Station ${id}: ${count} assignments\n`;
-                    });
-                    reportText += '\n';
-                }
-
-                if (metrics.includes('leastUsed')) {
-                    reportText += '--- LEAST USED STATIONS ---\n';
-                    sortedStations.slice(-5).forEach(([id, count]) => {
-                        reportText += `Station ${id}: ${count} assignments\n`;
-                    });
-                    reportText += '\n';
-                }
-            }
-
-            if (metrics.includes('averageSession')) {
-                 const sessionDurations = allLogs.filter(l => l.message.includes('UNASSIGNED'))
-                     .map(log => {
-                         const durationMatch = log.message.match(/session duration: (\d+) minutes/i);
-                         return durationMatch ? Number(durationMatch[1]) : 0;
-                     }).filter(d => d > 0);
-
-                 const totalDuration = sessionDurations.reduce((sum, d) => sum + d, 0);
-                 const averageDuration = sessionDurations.length > 0 ? (totalDuration / sessionDurations.length).toFixed(2) : 0;
-                 reportText += `--- AVERAGE SESSION TIME ---\n`;
-                 reportText += `Average session duration: ${averageDuration} minutes\n\n`;
-            }
-            
-            customReportOutput.innerHTML = `<pre>${reportText}</pre>`;
-            customReportOutput.style.display = 'block';
-            logActivity('Admin generated a custom report.');
+            closeModal('user-detail-modal');
         });
 
-        // ---------- Render station status for admin dashboard ----------
-        function renderStationStatusAdmin() {
-            const stations = window._stationsCache || [];
-            stationStatusAdmin.innerHTML = '';
-            stations.forEach(station => {
-                const statusClass = station.isOccupied ? 'occupied' : (station.statusFlag === 'Needs Maintenance' ? 'needs-maintenance' : 'unoccupied');
-                const user = studentsCache.find(s => s.id === station.assignedTo);
-                const userText = user ? `${user.name} (${user.id})` : '';
-                const supervisor = supervisorsCache.find(s => s.id === station.assignedBy);
-                const supervisorText = supervisor ? `${supervisor.name} (${supervisor.id})` : '';
+        window.closeModal = (id) => {
+            document.getElementById(id).style.display = 'none';
+        };
 
+        window.toggleSupervisorBlock = async (id) => {
+            const supRef = db.collection('supervisors').doc(id);
+            const doc = await supRef.get();
+            if (!doc.exists) return;
+            const isBlocked = !!doc.data().isBlocked;
+            await supRef.update({ isBlocked: !isBlocked });
+            logActivity(`ADMIN ${!isBlocked ? 'BLOCKED' : 'UNBLOCKED'} SUPERVISOR ${doc.data().name}.`);
+        };
+
+        window.deleteUser = async (id, type) => {
+            if (type === 'student') {
+                await db.collection('students').doc(id).delete();
+                logActivity(`ADMIN DELETED STUDENT (ID: ${id}).`);
+            } else {
+                const supDoc = await db.collection('supervisors').doc(id).get();
+                if (supDoc.exists) {
+                    const sup = supDoc.data();
+                    // try delete auth account if authUid present
+                    if (sup.authUid) {
+                        try {
+                            // Note: deleting other auth users requires admin privileges (server). We cannot delete another auth user from client SDK.
+                            // So here we only remove the Firestore doc and leave auth user for manual removal using Firebase Console or Cloud Function.
+                        } catch (err) {
+                            console.warn('Could not delete auth user from client:', err);
+                        }
+                    }
+                    await db.collection('supervisors').doc(id).delete();
+                    logActivity(`ADMIN DELETED SUPERVISOR ${sup.name} (ID: ${id}).`);
+                }
+            }
+        };
+
+        // ---------- Station rendering & assignment ----------
+        function renderStationStatusAdmin() {
+            stationStatusAdmin.innerHTML = '';
+            const stations = window._stationsCache || [];
+            stations.forEach(station => {
+                let statusClass = station.isOccupied ? 'occupied' : 'unoccupied';
+                if (station.statusFlag) statusClass = 'needs-maintenance';
+                const statusText = station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'UNOCCUPIED');
+                const assignedDetails = station.isOccupied ? `
+                    <p class="text-sm">ASSIGNED TO: ${station.assignedTo ? station.assignedTo.name : 'N/A'}</p>
+                    <p class="text-sm">ASSIGNED BY: ${station.assignedBy || 'N/A'}</p><p class="text-sm" style="font-weight:bold;">OCCUPIED BY: ${station.assignedTo ? station.assignedTo.name : 'N/A'}</p>
+                    <p class="text-sm">TIME LEFT: <span id="timer-${station.id}-admin">--:--</span></p>
+                    <button onclick="unassignStation(${station.id}, 'admin')" class="btn-danger w-full mt-2" style="font-size: 0.75rem; padding: 0.25rem;">UNASSIGN</button>
+                ` : '';
+                const issueDetails = station.issue ? `<p class="text-xs text-neon-yellow mt-2">ISSUE: ${station.issue}</p><button onclick="dismissIssue(${station.id})" class="btn-warning" style="font-size:0.75rem; padding:0.25rem;">DISMISS ISSUE</button>` : '';
                 const stationCard = document.createElement('div');
                 stationCard.className = `station-card ${statusClass}`;
                 stationCard.innerHTML = `
-                    <h3>STATION ${station.id}</h3>
-                    <p>STATUS: ${station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'AVAILABLE')}</p>
-                    ${station.isOccupied ? `
-                        <p class="text-neon-red">ASSIGNED TO: ${userText}</p>
-                        <p class="text-neon-blue">ASSIGNED BY: ${supervisorText}</p>
-                    ` : ''}
-                    ${station.isOccupied && station.sessionEndTime ? `<p class="text-neon-blue">SESSION ENDS: ${new Date(station.sessionEndTime).toLocaleTimeString()}</p>` : ''}
-                    ${station.statusFlag ? `<p class="text-neon-yellow">ISSUE: ${station.statusFlag}</p>` : ''}
+                    <h3 class="text-xl font-bold">STATION ${station.id}</h3>
+                    <p class="text-sm font-bold">${statusText}</p>
+                    ${assignedDetails}
+                    ${issueDetails}
                 `;
                 stationStatusAdmin.appendChild(stationCard);
             });
         }
 
-        // ---------- Render station status for supervisor dashboard ----------
-        function renderStationStatusSupervisor() {
+        async function unassignStation(id, unassignedBy) {
+            const sRef = db.collection('stations').doc(String(id));
+            const sDoc = await sRef.get();
+            if (!sDoc.exists) return;
+            const s = sDoc.data();
+            if (!s.isOccupied) return;
+            // update student's history
+            if (s.assignedTo && s.assignedTo.id) {
+                const stuRef = db.collection('students').doc(s.assignedTo.id);
+                const stuDoc = await stuRef.get();
+                if (stuDoc.exists) {
+                    const stu = stuDoc.data();
+                    const hist = stu.stationHistory || [];
+                    const startTime = s.sessionEndTime ? (s.sessionEndTime - (s.sessionDuration || 0)*60000) : Date.now();
+                    hist.push({ stationId: s.id, startTime: new Date(startTime).toISOString(), endTime: new Date().toISOString() });
+                    await stuRef.update({ stationHistory: hist });
+                }
+            }
+            // push to stationUsage collection
+            await db.collection('stationUsageHistory').add({
+                stationId: s.id,
+                studentId: s.assignedTo ? s.assignedTo.id : null,
+                startTime: s.sessionEndTime ? (new Date(s.sessionEndTime - (s.sessionDuration || 0)*60000)).toISOString() : new Date().toISOString(),
+                endTime: new Date().toISOString(),
+                duration: s.sessionDuration || null,
+                timestamp: new Date()
+            });
+            await sRef.update({
+                isOccupied: false,
+                assignedTo: null,
+                assignedBy: null,
+                sessionEndTime: null,
+                sessionDuration: null,
+                issue: null,
+                statusFlag: null
+            });
+            alert(`STATION ${id} HAS BEEN UNASSIGNED.`);
+            logActivity(`${unassignedBy.toUpperCase()} UNASSIGNED STATION ${id}.`);
+        }
+
+        function renderStationSelectors() {
+            stationSelect.innerHTML = '<option value="">SELECT A STATION</option>';
+            issueStationSelect.innerHTML = '<option value="">SELECT A STATION</option>';
             const stations = window._stationsCache || [];
-            stationStatusSupervisor.innerHTML = '';
             stations.forEach(station => {
-                const statusClass = station.isOccupied ? 'occupied' : (station.statusFlag === 'Needs Maintenance' ? 'needs-maintenance' : 'unoccupied');
-                const user = studentsCache.find(s => s.id === station.assignedTo);
-                const userText = user ? `${user.name} (${user.id})` : '';
-                const supervisor = supervisorsCache.find(s => s.id === station.assignedBy);
-                const supervisorText = supervisor ? `${supervisor.name} (${supervisor.id})` : '';
+                const option = document.createElement('option');
+                option.value = station.id;
+                option.textContent = `STATION ${station.id}`;
+                if (station.isOccupied) {
+                    option.disabled = true;
+                    option.textContent += ' (OCCUPIED)';
+                }
+                stationSelect.appendChild(option);
+                const issueOption = document.createElement('option');
+                issueOption.value = station.id;
+                issueOption.textContent = `STATION ${station.id}`;
+                if (station.statusFlag) issueOption.textContent += ` (${station.statusFlag})`;
+                issueStationSelect.appendChild(issueOption);
+            });
+        }
+
+        studentLookupInput.addEventListener('input', async () => {
+            const value = studentLookupInput.value.trim();
+            if (!value) {
+                studentProfilePreview.style.display = 'none';
+                return;
+            }
+            // try find by id then by name
+            let student = null;
+            const doc = await db.collection('students').doc(value).get();
+            if (doc.exists) student = { id: doc.id, ...doc.data() };
+            else {
+                const snap = await db.collection('students').where('name', '==', value).limit(1).get();
+                if (!snap.empty) {
+                    const sd = snap.docs[0];
+                    student = { id: sd.id, ...sd.data() };
+                }
+            }
+            if (student) {
+                studentProfilePreview.style.display = 'flex';
+                studentPhotoPreview.src = student.photo || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDgiIGhlaWdodD0iMTA4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzAwZmYwMCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXVzZXIiPjxwYXRoIGQ9Ik0xOSAyMXYtMmE0IDQgMCAwIDAtNC00SDlhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+';
+                studentDetailsPreview.innerHTML = `
+                    <p class="text-xl text-neon-green">${student.name}</p>
+                    <p class="text-sm">ID: ${student.id}</p>
+                    <p class="text-sm">Hostel: ${student.hostel}</p>
+                `;
+                studentLookupMessage.textContent = '';
+            } else {
+                studentProfilePreview.style.display = 'none';
+                studentLookupMessage.textContent = 'STUDENT NOT FOUND. PLEASE CHECK THE ID OR NAME.';
+                studentLookupMessage.className = 'text-center text-neon-red mt-2';
+            }
+        });
+
+        stationAssignmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const stationId = parseInt(e.target['station-select'].value);
+            const studentLookup = e.target['student-lookup-input'].value.trim();
+            const duration = parseInt(e.target['session-duration'].value);
+            if (!studentLookup) {
+                studentLookupMessage.textContent = 'ENTER STUDENT ID OR NAME.';
+                return;
+            }
+            // find student
+            let student = null;
+            const doc = await db.collection('students').doc(studentLookup).get();
+            if (doc.exists) student = { id: doc.id, ...doc.data() };
+            else {
+                const snap = await db.collection('students').where('name', '==', studentLookup).limit(1).get();
+                if (!snap.empty) {
+                    student = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                }
+            }
+            if (!student) {
+                studentLookupMessage.textContent = 'ERROR: STUDENT DOES NOT EXIST IN THE SYSTEM.';
+                studentLookupMessage.className = 'text-center text-neon-red mt-2';
+                return;
+            }
+            const sRef = db.collection('stations').doc(String(stationId));
+            const sDoc = await sRef.get();
+            if (!sDoc.exists) {
+                studentLookupMessage.textContent = 'INVALID STATION.';
+                studentLookupMessage.className = 'text-center text-neon-red mt-2';
+                return;
+            }
+            const s = sDoc.data();
+            if (s.isOccupied) {
+                studentLookupMessage.textContent = 'STATION IS ALREADY OCCUPIED.';
+                studentLookupMessage.className = 'text-center text-neon-red mt-2';
+                return;
+            }
+            // assign station
+            await sRef.update({
+                isOccupied: true,
+                assignedTo: { id: student.id, name: student.name },
+                assignedBy: currentUser.name || 'Supervisor',
+                sessionEndTime: Date.now() + duration*60000,
+                sessionDuration: duration
+            });
+            studentLookupMessage.textContent = `SUCCESS: STATION ${stationId} ASSIGNED TO ${student.name}.`;
+            studentLookupMessage.className = 'text-center mt-2 text-neon-green';
+            stationAssignmentForm.reset();
+            studentProfilePreview.style.display = 'none';
+            logActivity(`SUPERVISOR ${currentUser.name || 'unknown'} ASSIGNED STATION ${stationId} TO ${student.name} for ${duration} minutes.`);
+            await db.collection('assignments').add({stationId, studentId: student.id, studentName: student.name, supervisorId: currentUser.id, supervisorName: currentUser.name, time: new Date(), duration});
+        });
+
+        function renderStationStatusSupervisor() {
+            stationStatusSupervisor.innerHTML = '';
+            const stations = window._stationsCache || [];
+            stations.forEach(station => {
+                let statusClass = station.isOccupied ? 'occupied' : 'unoccupied';
+                if (station.statusFlag) statusClass = 'needs-maintenance';
+                const statusText = station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'UNOCCUPIED');
+                const assignedDetails = station.isOccupied ? `
+                    <p class="text-sm">BY: ${station.assignedTo ? station.assignedTo.name : 'N/A'}</p>
+                    <p class="text-sm">TIME LEFT: <span id="timer-${station.id}-supervisor">--:--</span></p>
+                    <button onclick="unassignStation(${station.id}, 'supervisor')" class="btn-danger w-full mt-2" style="font-size: 0.75rem; padding: 0.25rem;">UNASSIGN</button>
+                ` : '';
+                const issueDetails = station.issue ? `<p class="text-xs text-neon-yellow mt-2">ISSUE: ${station.issue}</p><button onclick="dismissIssue(${station.id})" class="btn-warning" style="font-size:0.75rem; padding:0.25rem;">DISMISS ISSUE</button>` : '';
                 const stationCard = document.createElement('div');
                 stationCard.className = `station-card ${statusClass}`;
                 stationCard.innerHTML = `
-                    <h3>STATION ${station.id}</h3>
-                    <p>STATUS: ${station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'AVAILABLE')}</p>
-                    ${station.isOccupied ? `
-                        <p class="text-neon-red">ASSIGNED TO: ${userText}</p>
-                        <p class="text-neon-blue">ASSIGNED BY: ${supervisorText}</p>
-                    ` : ''}
-                    ${station.isOccupied && station.sessionEndTime ? `<p class="text-neon-blue">SESSION ENDS: ${new Date(station.sessionEndTime).toLocaleTimeString()}</p>` : ''}
-                    ${station.statusFlag ? `<p class="text-neon-yellow">ISSUE: ${station.statusFlag}</p>` : ''}
-                    <div class="supervisor-actions">
-                        ${station.isOccupied ? `<button class="btn-danger" onclick="unassignStation(${station.id})">UNASSIGN</button>` : ''}
-                        <button class="btn-primary" onclick="showAssignStationForm(${station.id})">ASSIGN</button>
-                    </div>
+                    <h3 class="text-xl font-bold">STATION ${station.id}</h3>
+                    <p class="text-sm font-bold">${statusText}</p>
+                    ${assignedDetails}
+                    ${issueDetails}
                 `;
                 stationStatusSupervisor.appendChild(stationCard);
             });
         }
-        
-        function showAssignStationForm(stationId) {
-            stationSelect.value = stationId;
-            // Scroll to the assignment form
-            stationAssignmentForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        
-        async function unassignStation(stationId) {
-            if (confirm(`Are you sure you want to unassign station ${stationId}?`)) {
-                try {
-                    const stationRef = db.collection('stations').doc(String(stationId));
-                    const stationDoc = await stationRef.get();
-                    const stationData = stationDoc.data();
-                    
-                    const sessionDuration = Math.ceil((Date.now() - new Date(stationData.sessionStartTime).getTime()) / (1000 * 60));
 
-                    await stationRef.update({
-                        isOccupied: false,
-                        assignedTo: null,
-                        assignedBy: null,
-                        sessionEndTime: null,
-                        sessionDuration: null,
-                        sessionStartTime: null
-                    });
-                    
-                    // Add to activity log
-                    logActivity(`Supervisor UNASSIGNED student (ID: ${stationData.assignedTo}) from station ${stationId}. Final session duration: ${sessionDuration} minutes.`);
-                    
-                } catch (error) {
-                    console.error("Error unassigning station: ", error);
-                    alert('Failed to unassign station.');
-                }
+        issueReportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const stationId = parseInt(e.target['issue-station-select'].value);
+            const statusFlag = e.target['issue-type'].value;
+            const description = e.target['issue-description'].value;
+            const sRef = db.collection('stations').doc(String(stationId));
+            const sDoc = await sRef.get();
+            if (!sDoc.exists) {
+                alert('INVALID STATION SELECTED.');
+                return;
             }
-        }
+            await sRef.update({ statusFlag, issue: description });
+            await db.collection('maintenanceLog').add({
+                stationId, reportedBy: currentUser.name || 'unknown', statusFlag, description, date: new Date()
+            });
+            alert(`ISSUE REPORTED FOR STATION ${stationId}: ${description}`);
+            issueReportForm.reset();
+            logActivity(`SUPERVISOR ${currentUser.name || 'unknown'} REPORTED AN ISSUE WITH STATION ${stationId} (${statusFlag}).`);
+        });
 
-        // ---------- Kiosk view rendering ----------
+        supervisorChangePasswordBtn.addEventListener('click', () => {
+            passwordChangeModal.style.display = 'block';
+        });
+        cancelChangeBtn.addEventListener('click', () => {
+            passwordChangeModal.style.display = 'none';
+        });
+        passwordChangeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPassword = e.target['current-password'].value;
+            const newPassword = e.target['new-password'].value;
+            const changePasswordMessage = document.getElementById('change-password-message');
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('Not authenticated');
+                // Re-authenticate and change password
+                const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+                await user.reauthenticateWithCredential(cred);
+                await user.updatePassword(newPassword);
+                passwordChangeModal.style.display = 'none';
+                changePasswordMessage.textContent = '';
+                alert('PASSWORD CHANGED SUCCESSFULLY!');
+                logActivity(`PASSWORD FOR SUPERVISOR WAS CHANGED.`);
+            } catch (err) {
+                console.error(err);
+                changePasswordMessage.textContent = err.message || 'FAILED TO CHANGE PASSWORD.';
+            }
+        });
+
+        // ---------- Kiosk rendering ----------
         function renderKioskStations() {
-            const stations = window._stationsCache || [];
             kioskStationList.innerHTML = '';
+            const stations = window._stationsCache || [];
             stations.forEach(station => {
-                const statusClass = station.isOccupied ? 'occupied' : (station.statusFlag === 'Needs Maintenance' ? 'needs-maintenance' : 'unoccupied');
+                let statusClass = station.isOccupied ? 'occupied' : 'unoccupied';
+                if (station.statusFlag) statusClass = 'needs-maintenance';
+                const statusText = station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'UNOCCUPIED');
                 const stationCard = document.createElement('div');
-                stationCard.className = `kiosk-card ${statusClass}`;
+                stationCard.className = `kiosk-card station-card ${statusClass}`;
                 stationCard.innerHTML = `
-                    <h3>STATION ${station.id}</h3>
-                    <p>STATUS: ${station.isOccupied ? 'OCCUPIED' : (station.statusFlag ? station.statusFlag.toUpperCase() : 'AVAILABLE')}</p>
+                    <h3 class="text-xl font-bold">STATION ${station.id}</h3>
+                    <p class="text-sm font-bold">${statusText}</p>
                 `;
                 kioskStationList.appendChild(stationCard);
             });
         }
 
-        // ---------- Station management (selectors and assignment) ----------
-        function renderStationSelectors() {
-            const stations = window._stationsCache || [];
-            stationSelect.innerHTML = '<option value="">SELECT A STATION</option>';
-            issueStationSelect.innerHTML = '<option value="">SELECT STATION</option>';
-            stations.forEach(station => {
-                // For assignment, only show available stations
-                if (!station.isOccupied && !station.statusFlag) {
-                    const option = document.createElement('option');
-                    option.value = station.id;
-                    option.textContent = `STATION ${station.id}`;
-                    stationSelect.appendChild(option);
-                }
-                // For issue reporting, show all stations
-                const option = document.createElement('option');
-                option.value = station.id;
-                option.textContent = `STATION ${station.id}`;
-                issueStationSelect.appendChild(option);
-            });
+        // ---------- Timers & utility updates ----------
+        let sessionTimerInterval = null;
+        function startSessionTimers() {
+            if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+            sessionTimerInterval = setInterval(() => {
+                const now = Date.now();
+                const stations = window._stationsCache || [];
+                stations.forEach(station => {
+                    if (station.isOccupied && station.sessionEndTime) {
+                        const timeLeftMs = station.sessionEndTime - now;
+                        if (timeLeftMs <= 0) {
+                            // auto unassign
+                            unassignStation(station.id, 'auto-timer');
+                        } else {
+                            const minutes = Math.floor(timeLeftMs / 60000);
+                            const seconds = Math.floor((timeLeftMs % 60000) / 1000);
+                            const timerElAdmin = document.getElementById(`timer-${station.id}-admin`);
+                            if (timerElAdmin) timerElAdmin.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+                            const timerElSupervisor = document.getElementById(`timer-${station.id}-supervisor`);
+                            if (timerElSupervisor) timerElSupervisor.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+                        }
+                    }
+                });
+            }, 1000);
         }
 
-        let studentLookupDebounce;
-        studentLookupInput.addEventListener('input', () => {
-            clearTimeout(studentLookupDebounce);
-            studentLookupDebounce = setTimeout(async () => {
-                const query = studentLookupInput.value.trim();
-                studentProfilePreview.style.display = 'none';
-                studentLookupMessage.textContent = '';
-                if (query.length < 3) return;
-
-                const student = studentsCache.find(s => s.id.toLowerCase().includes(query.toLowerCase()) || s.name.toLowerCase().includes(query.toLowerCase()));
-                
-                if (student) {
-                    // Check if student is already assigned
-                    const isAlreadyAssigned = window._stationsCache.some(s => s.assignedTo === student.id);
-                    if (isAlreadyAssigned) {
-                        studentLookupMessage.textContent = 'STUDENT IS ALREADY ASSIGNED TO A STATION.';
-                        studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                        return;
-                    }
-
-                    studentPhotoPreview.src = student.photo || 'https://via.placeholder.com/64?text=NO+PHOTO';
-                    studentDetailsPreview.innerHTML = `
-                        <p>NAME: ${student.name}</p>
-                        <p>ID: ${student.id}</p>
-                        <p>PROGRAM: ${student.program}</p>
-                    `;
-                    studentProfilePreview.style.display = 'flex';
-                } else {
-                    studentLookupMessage.textContent = 'STUDENT NOT FOUND.';
-                    studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                }
-            }, 500);
-        });
-
-        stationAssignmentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            studentLookupMessage.textContent = '';
-            const stationId = e.target['station-select'].value;
-            const studentQuery = e.target['student-lookup-input'].value.trim();
-            const duration = e.target['session-duration'].value;
-            
-            if (!stationId || !studentQuery || !duration) {
-                studentLookupMessage.textContent = 'PLEASE FILL IN ALL FIELDS.';
-                studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                return;
-            }
-
-            const student = studentsCache.find(s => s.id.toLowerCase().includes(studentQuery.toLowerCase()) || s.name.toLowerCase().includes(studentQuery.toLowerCase()));
-
-            if (!student) {
-                studentLookupMessage.textContent = 'STUDENT NOT FOUND.';
-                studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                return;
-            }
-
-            // Check if student is already assigned
-            const isAlreadyAssigned = window._stationsCache.some(s => s.assignedTo === student.id);
-            if (isAlreadyAssigned) {
-                studentLookupMessage.textContent = 'STUDENT IS ALREADY ASSIGNED TO A STATION.';
-                studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                return;
-            }
-            
-            const stationRef = db.collection('stations').doc(stationId);
-            const stationDoc = await stationRef.get();
-            if (!stationDoc.exists || stationDoc.data().isOccupied) {
-                studentLookupMessage.textContent = 'STATION IS ALREADY OCCUPIED OR DOES NOT EXIST.';
-                studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-                return;
-            }
-
-            try {
-                const sessionStartTime = Date.now();
-                const sessionEndTime = sessionStartTime + (duration * 60 * 1000);
-                await stationRef.update({
-                    isOccupied: true,
-                    assignedTo: student.id,
-                    assignedBy: currentUser.id,
-                    sessionStartTime,
-                    sessionEndTime,
-                    sessionDuration: Number(duration)
-                });
-                
-                db.collection('meta').doc('lastAssignment').set({ stationId: stationId, studentId: student.id, studentName: student.name, supervisorId: currentUser.id, supervisorName: currentUser.name, time: Date.now() });
-                
-                // Add to student history
-                const studentRef = db.collection('students').doc(student.id);
-                const studentDoc = await studentRef.get();
-                const history = studentDoc.data().stationHistory || [];
-                history.push({
-                    stationId: stationId,
-                    assignedAt: sessionStartTime,
-                    duration: Number(duration)
-                });
-                await studentRef.update({ stationHistory: history });
-
-                stationAssignmentForm.reset();
-                studentProfilePreview.style.display = 'none';
-                studentLookupMessage.textContent = `STATION ${stationId} ASSIGNED TO ${student.name} FOR ${duration} MINUTES.`;
-                studentLookupMessage.className = 'text-center mt-2 text-neon-green';
-                logActivity(`Supervisor ${currentUser.name} ASSIGNED student ${student.name} (ID: ${student.id}) to station ${stationId} for ${duration} minutes.`);
-            } catch (err) {
-                console.error(err);
-                studentLookupMessage.textContent = err.message || 'FAILED TO ASSIGN STATION.';
-                studentLookupMessage.className = 'text-center mt-2 text-neon-red';
-            }
-        });
-
-        // ---------- Issue Reporting ----------
-        issueReportForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const stationId = e.target['issue-station-select'].value;
-            const issueType = e.target['issue-type'].value;
-            const issueDescription = e.target['issue-description'].value;
-
-            if (!stationId || !issueType) {
-                alert('Please select a station and an issue type.');
-                return;
-            }
-
-            try {
-                await db.collection('stations').doc(stationId).update({ statusFlag: issueType, issue: issueDescription, issueReportedAt: Date.now() });
-                issueReportForm.reset();
-                alert('ISSUE REPORTED SUCCESSFULLY. ADMIN HAS BEEN NOTIFIED.');
-                logActivity(`Supervisor ${currentUser.name} REPORTED an issue for station ${stationId}: ${issueType} - ${issueDescription}.`);
-            } catch (err) {
-                console.error(err);
-                alert('FAILED TO REPORT ISSUE.');
-            }
-        });
-
-        // ---------- Chat system ----------
-        function renderChat(chatBox, userType) {
-            const messages = window._chatsCache || [];
+        // ---------- Chat (Firestore-backed) ----------
+        function renderChat(chatBox, userRole) {
             chatBox.innerHTML = '';
-            let unreadCount = 0;
+            const messages = window._chatsCache || [];
             messages.forEach(msg => {
-                const messageCard = document.createElement('div');
-                const isMyMessage = (userType === 'admin' && msg.from === 'admin') || (userType === 'supervisor' && msg.from === 'supervisor');
-                messageCard.className = `chat-message ${isMyMessage ? userType : (userType === 'admin' ? 'supervisor' : 'admin')}`;
-                
-                let senderName = 'UNKNOWN USER';
-                if (msg.from === 'admin') {
-                    senderName = 'ADMIN';
-                } else if (msg.from === 'supervisor' && msg.supervisorId) {
-                    const supervisor = supervisorsCache.find(s => s.id === msg.supervisorId);
-                    if (supervisor) {
-                        senderName = supervisor.name;
-                    }
-                }
-                
-                messageCard.innerHTML = `
-                    <p class="text-sm font-bold">${senderName}</p>
-                    <p>${msg.message}</p>
-                    <p class="text-xs text-right">${new Date(msg.time).toLocaleTimeString()}</p>
-                `;
-                chatBox.appendChild(messageCard);
-                // Auto-scroll to the bottom
-                chatBox.scrollTop = chatBox.scrollHeight;
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${msg.role === 'admin' ? 'admin' : 'supervisor'}`;
+                messageDiv.innerHTML = `<p class="font-bold">${msg.sender}:</p><p>${msg.text}</p><p style="text-align: right; font-size: 0.75rem; opacity: 0.7;">${new Date(msg.time).toLocaleTimeString()}</p>`;
+                chatBox.appendChild(messageDiv);
             });
-
-            // Update notifications
-            if (userType === 'admin') {
-                const unread = messages.filter(m => m.from === 'supervisor' && !m.readByAdmin).length;
-                if (unread > 0) {
-                    adminChatNotification.style.display = 'inline-block';
-                } else {
-                    adminChatNotification.style.display = 'none';
-                }
-            } else { // supervisor
-                const unread = messages.filter(m => m.from === 'admin' && !m.readBySupervisor).length;
-                if (unread > 0) {
-                    supervisorChatNotification.style.display = 'inline-block';
-                } else {
-                    supervisorChatNotification.style.display = 'none';
-                }
-            }
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
         adminChatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const message = e.target['admin-chat-input'].value.trim();
-            if (!message) return;
-            try {
-                await db.collection('chats').add({
-                    from: 'admin',
-                    message,
-                    time: Date.now(),
-                    readByAdmin: true,
-                    readBySupervisor: false
-                });
-                e.target.reset();
-            } catch (err) {
-                console.error('Failed to send chat message:', err);
-            }
+            const input = document.getElementById('admin-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            await db.collection('chats').add({
+                sender: 'ADMIN',
+                role: 'admin',
+                text,
+                time: Date.now()
+            });
+            input.value = '';
         });
 
         supervisorChatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const message = e.target['supervisor-chat-input'].value.trim();
-            if (!message || !currentUser) return;
-            try {
-                await db.collection('chats').add({
-                    from: 'supervisor',
-                    message,
-                    time: Date.now(),
-                    supervisorId: currentUser.id,
-                    readByAdmin: false,
-                    readBySupervisor: true
-                });
-                e.target.reset();
-            } catch (err) {
-                console.error('Failed to send chat message:', err);
-            }
-        });
-
-        // Mark messages as read when the chat box is focused
-        adminChatBox.addEventListener('focusin', async () => {
-            // Find all unread messages from supervisors and mark them as read
-            const unreadMessages = window._chatsCache.filter(m => m.from === 'supervisor' && !m.readByAdmin);
-            const batch = db.batch();
-            unreadMessages.forEach(msg => {
-                const docRef = db.collection('chats').doc(msg.id);
-                batch.update(docRef, { readByAdmin: true });
+            const input = document.getElementById('supervisor-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            await db.collection('chats').add({
+                sender: currentUser.name || 'SUPERVISOR',
+                role: 'supervisor',
+                text,
+                time: Date.now()
             });
-            await batch.commit();
-        });
-        supervisorChatBox.addEventListener('focusin', async () => {
-            const unreadMessages = window._chatsCache.filter(m => m.from === 'admin' && !m.readBySupervisor);
-            const batch = db.batch();
-            unreadMessages.forEach(msg => {
-                const docRef = db.collection('chats').doc(msg.id);
-                batch.update(docRef, { readBySupervisor: true });
-            });
-            await batch.commit();
+            input.value = '';
         });
 
-
-        // ---------- Admin Broadcast ----------
+        // ---------- Broadcast ----------
         broadcastForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const message = e.target['broadcast-message-input'].value.trim();
             if (!message) return;
-            try {
-                await db.collection('meta').doc('broadcast').set({ message, time: Date.now() });
-                broadcastForm.reset();
-                alert('BROADCAST SENT SUCCESSFULLY!');
-                logActivity('Admin sent a system broadcast.');
-            } catch (err) {
-                console.error('Failed to send broadcast:', err);
-                alert('FAILED TO SEND BROADCAST.');
-            }
+            await db.collection('meta').doc('broadcast').set({ message, time: Date.now() });
+            e.target.reset();
+            logActivity(`ADMIN SENT AN EMERGENCY BROADCAST: "${message}"`);
         });
-
-        function dismissBroadcast() {
+        window.dismissBroadcast = async () => {
+            await db.collection('meta').doc('broadcast').delete();
             broadcastMessageEl.style.display = 'none';
+        };
+
+        // ---------- Activities logging ----------
+        async function logActivity(message) {
+            await db.collection('activities').add({ message, time: Date.now() });
         }
 
+        // ---------- Reports ----------
+        function updateReportCounts() {
+            const stations = window._stationsCache || [];
+            const totalStations = stations.length;
+            const occupiedStations = stations.filter(s=>s.isOccupied).length;
+            const unoccupiedStations = totalStations - occupiedStations;
+            document.getElementById('report-supervisors').textContent = supervisorsCache.length;
+            document.getElementById('report-students').textContent = studentsCache.length;
+            document.getElementById('report-total-stations').textContent = totalStations;
+            document.getElementById('report-occupied-stations').textContent = occupiedStations;
+            document.getElementById('report-unoccupied-stations').textContent = unoccupiedStations;
+        }
 
-        // ---------- Password Management ----------
-        forgotPasswordBtn.addEventListener('click', () => {
-            openModal('password-reset-modal');
-        });
-        cancelResetBtn.addEventListener('click', () => {
-            closeModal('password-reset-modal');
-        });
-        supervisorChangePasswordBtn.addEventListener('click', () => {
-            openModal('password-change-modal');
-        });
-        cancelChangeBtn.addEventListener('click', () => {
-            closeModal('password-change-modal');
-        });
-
-        passwordResetForm.addEventListener('submit', async (e) => {
+        customReportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            document.getElementById('reset-message').textContent = '';
-            const name = e.target['reset-name'].value.trim();
-            const id = e.target['reset-id'].value.trim();
-            const oldPassword = e.target['reset-old-password'].value;
-            const newPassword = e.target['reset-new-password'].value;
-
-            try {
-                // Find the supervisor document
-                const supDoc = await db.collection('supervisors').doc(id).get();
-                if (!supDoc.exists || supDoc.data().name !== name) {
-                    document.getElementById('reset-message').textContent = 'INVALID CREDENTIALS.';
-                    return;
+            const startDate = e.target['report-start-date'].value ? new Date(e.target['report-start-date'].value) : null;
+            const endDate = e.target['report-end-date'].value ? new Date(e.target['report-end-date'].value) : null;
+            const metrics = Array.from(e.target.querySelectorAll('input[name="metric"]:checked')).map(cb => cb.value);
+            let reportHtml = '<h3>CUSTOM REPORT</h3>';
+            if (startDate && endDate) reportHtml += `<p>Date Range: ${startDate.toDateString()} to ${endDate.toDateString()}</p>`;
+            // fetch stationUsageHistory and filter
+            const snap = await db.collection('stationUsageHistory').get();
+            const history = [];
+            snap.forEach(d => history.push(d.data()));
+            const filtered = history.filter(h => {
+                if (startDate && endDate) {
+                    const st = new Date(h.startTime);
+                    return st >= startDate && st <= endDate;
                 }
-                const sup = supDoc.data();
-
-                // Re-authenticate with old password
-                const user = await auth.signInWithEmailAndPassword(sup.email, oldPassword);
-
-                // Change password
-                await user.user.updatePassword(newPassword);
-                
-                document.getElementById('reset-message').textContent = 'PASSWORD RESET SUCCESSFUL!';
-                document.getElementById('reset-message').className = 'text-center mt-2 text-neon-green';
-                logActivity(`Supervisor ${name} (ID: ${id}) reset their password.`);
-                
-            } catch (err) {
-                console.error(err);
-                document.getElementById('reset-message').textContent = err.message || 'PASSWORD RESET FAILED.';
-                document.getElementById('reset-message').className = 'text-center mt-2 text-neon-red';
+                return true;
+            });
+            if (metrics.includes('mostUsed') || metrics.includes('leastUsed')) {
+                const usageCounts = filtered.reduce((acc,curr)=>{ acc[curr.stationId]=(acc[curr.stationId]||0)+1; return acc; }, {});
+                const sorted = Object.entries(usageCounts).sort(([,a],[,b])=>b-a);
+                if (metrics.includes('mostUsed')) {
+                    reportHtml += `<h4>MOST USED STATIONS:</h4><ol>`;
+                    sorted.slice(0,5).forEach(([stationId,count])=> reportHtml += `<li>STATION ${stationId}: ${count} TIMES</li>`);
+                    reportHtml += `</ol>`;
+                }
+                if (metrics.includes('leastUsed')) {
+                    const least = sorted.slice(-5).reverse();
+                    reportHtml += `<h4>LEAST USED STATIONS:</h4><ol>`;
+                    least.forEach(([stationId,count])=> reportHtml += `<li>STATION ${stationId}: ${count} TIMES</li>`);
+                    reportHtml += `</ol>`;
+                }
             }
+            if (metrics.includes('averageSession')) {
+                const totalDuration = filtered.reduce((sum,h)=> sum + (h.duration||0), 0);
+                const avg = filtered.length>0 ? (totalDuration/filtered.length).toFixed(2) : 0;
+                reportHtml += `<h4>AVERAGE SESSION TIME:</h4><p>${avg} MINUTES</p>`;
+            }
+            customReportOutput.innerHTML = reportHtml;
+            customReportOutput.style.display = 'block';
+            logActivity('ADMIN GENERATED A CUSTOM REPORT.');
         });
 
-        passwordChangeForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            document.getElementById('change-password-message').textContent = '';
-            const currentPassword = e.target['current-password'].value;
-            const newPassword = e.target['new-password'].value;
+        // ---------- Password strength ----------
+        function checkPasswordStrength(password, element) {
+            const strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])(?=.{8,})");
+            const mediumRegex = new RegExp("^(((?=.*[a-z])(?=.*[A-Z]))|((?=.*[a-z])(?=.*[0-9]))|((?=.*[A-Z])(?=.*[0-9])))(?=.{6,})");
+            if (strongRegex.test(password)) {
+                element.textContent = 'Strong';
+                element.className = 'password-strength strong';
+            } else if (mediumRegex.test(password)) {
+                element.textContent = 'Medium';
+                element.className = 'password-strength medium';
+            } else {
+                element.textContent = 'Weak';
+                element.className = 'password-strength weak';
+            }
+        }
+        supervisorRegPasswordInput.addEventListener('input', (e)=> checkPasswordStrength(e.target.value, supervisorPasswordStrength));
+        passwordChangeForm.addEventListener('input', (e) => {
+            if (e.target.id === 'new-password') checkPasswordStrength(e.target.value, newPasswordStrength);
+        });
+
+        // ---------- Initialization on DOMContentLoaded ----------
+        document.addEventListener('DOMContentLoaded', async () => {
+            updateWelcomeMessage();
+            toggleLoginForms('admin');
+            await ensureAdminSettings();
+            await ensureStationsExist(100); // keep original count (100)
+            attachRealtimeListeners();
+            startSessionTimers();
             
-            try {
-                 // Re-authenticate the user with their current password
-                 const credential = firebase.auth.EmailAuthProvider.credential(
-                    auth.currentUser.email,
-                    currentPassword
-                 );
-                 await auth.currentUser.reauthenticateWithCredential(credential);
-                 // If re-authentication is successful, update the password
-                 await auth.currentUser.updatePassword(newPassword);
-                 
-                 document.getElementById('change-password-message').textContent = 'PASSWORD CHANGED SUCCESSFULLY!';
-                 document.getElementById('change-password-message').className = 'text-center mt-2 text-neon-green';
-                 logActivity(`Supervisor ${currentUser.name} (ID: ${currentUser.id}) changed their password.`);
-                 
-            } catch (err) {
-                console.error(err);
-                document.getElementById('change-password-message').textContent = err.message || 'PASSWORD CHANGE FAILED.';
-                document.getElementById('change-password-message').className = 'text-center mt-2 text-neon-red';
-            }
+// add back-to-top buttons to each section
+document.querySelectorAll('.system-panel').forEach(panel => {
+    const btn = document.createElement('button');
+    btn.textContent = 'Back to Top';
+    btn.className = 'btn-primary';
+    btn.style.marginTop = '0.5rem';
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    panel.appendChild(btn);
+});
+
         });
-        
-        // Live password strength checker
-        function checkPasswordStrength(password, strengthIndicator) {
-            let strength = 0;
-            if (password.length > 5) strength++;
-            if (password.match(/[a-z]/)) strength++;
-            if (password.match(/[A-Z]/)) strength++;
-            if (password.match(/[0-9]/)) strength++;
-            if (password.match(/[^a-zA-Z0-9]/)) strength++;
-
-            if (password.length > 0) {
-                if (strength <= 2) {
-                    strengthIndicator.textContent = 'WEAK';
-                    strengthIndicator.className = 'password-strength weak';
-                } else if (strength <= 4) {
-                    strengthIndicator.textContent = 'MEDIUM';
-                    strengthIndicator.className = 'password-strength medium';
+    
+        // Smooth scroll helper
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // Theme toggle
+        function toggleTheme() {
+            const isLight = document.body.classList.toggle('light-mode');
+            localStorage.setItem('prefersLight', isLight ? '1' : '0');
+        }
+        (function initTheme(){
+            const pref = localStorage.getItem('prefersLight');
+            if (pref === '1') document.body.classList.add('light-mode');
+        })();
+        // Dismiss issue (admin)
+        window.dismissIssue = async (stationId) => {
+            await db.collection('stations').doc(String(stationId)).update({ statusFlag: null, issue: null });
+            logActivity(`ADMIN DISMISSED ISSUE ON STATION ${stationId}.`);
+        };
+        // Update supervisor on duty (admin listener)
+        (function listenOnDuty(){
+            db.collection('meta').doc('supervisorOnDuty').onSnapshot(doc=>{
+                const el = document.getElementById('supervisor-on-duty-details');
+                if (!el) return;
+                if (doc.exists && doc.data() && doc.data().name) {
+                    const d = doc.data();
+                    el.textContent = `${d.name} (ID: ${d.id}, Email: ${d.email || 'N/A'})`;
                 } else {
-                    strengthIndicator.textContent = 'STRONG';
-                    strengthIndicator.className = 'password-strength strong';
+                    el.textContent = 'None';
                 }
-            } else {
-                strengthIndicator.textContent = '';
-                strengthIndicator.className = 'password-strength';
-            }
-        }
-        supervisorRegPasswordInput.addEventListener('input', (e) => checkPasswordStrength(e.target.value, supervisorPasswordStrength));
-        newPasswordInput.addEventListener('input', (e) => checkPasswordStrength(e.target.value, newPasswordStrength));
-        
-        // ---------- Activity Logging ----------
-        function logActivity(message) {
-            db.collection('activities').add({
-                message,
-                time: Date.now(),
-                user: currentUser ? currentUser.name : 'System',
-                role: currentUser ? currentUser.role : 'System'
-            }).catch(err => console.error("Error logging activity:", err));
-        }
-
-        // ---------- Supervisor Profile Photo ----------
-        async function renderSupervisorProfile() {
-            if (currentUser && currentUser.role === 'supervisor') {
-                const supDoc = await db.collection('supervisors').doc(currentUser.id).get();
-                const sup = supDoc.data();
-                if (sup && sup.photo) {
-                    supervisorProfilePhoto.innerHTML = `<img src="${sup.photo}" alt="Profile Photo" style="width: 100%; height: 100%; object-fit: cover;">`;
-                } else {
-                    supervisorProfilePhoto.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#00ff00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
-                }
-            }
-        }
-
-        // ---------- Session Timeout Logic & Kiosk update----------
-        setInterval(() => {
-            if (currentUser && currentUser.role === 'supervisor') {
-                const occupiedStations = window._stationsCache.filter(s => s.isOccupied);
-                occupiedStations.forEach(async (station) => {
-                    if (Date.now() > station.sessionEndTime) {
-                         const sessionDuration = Math.ceil((station.sessionEndTime - station.sessionStartTime) / (1000 * 60));
-                         await db.collection('stations').doc(String(station.id)).update({
-                            isOccupied: false,
-                            assignedTo: null,
-                            assignedBy: null,
-                            sessionEndTime: null,
-                            sessionDuration: null,
-                            sessionStartTime: null
-                         });
-                         // Add to activity log for auto-unassignment
-                         logActivity(`System AUTO-UNASSIGNED student (ID: ${station.assignedTo}) from station ${station.id} after session timeout of ${sessionDuration} minutes.`);
-                    }
-                });
-            }
-        }, 60000); // Check every minute
-        
-        // Init
-        updateWelcomeMessage();
-        setInterval(updateWelcomeMessage, 1000);
-        
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                // User is signed in. Do nothing for now, the screen will be handled by the login forms.
-            } else {
-                currentUser = null;
-                showScreen('login-screen');
-                ensureAdminSettings();
-                ensureStationsExist();
-            }
-        });
-    </script>
+            });
+        })();
+</script>
 </body>
 </html>
